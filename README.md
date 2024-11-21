@@ -13,4 +13,5 @@
 3. Clonar archivo ```.env.template``` y renombrarlo a ```.env```
 4. Cambiar las variables de entorno
 5. Levantar la base de datos
-6. Levantar servidor ```npm run start:dev```
+6. Ejecutar SEED ``` http://localhost:3000/api/seed```
+7. Levantar servidor ```npm run start:dev```

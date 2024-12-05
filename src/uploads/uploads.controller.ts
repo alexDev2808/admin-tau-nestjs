@@ -33,16 +33,24 @@ export class UploadsController {
       filename: imageNamer
     })
   }))
-  uploadItem(
-    @UploadedFile() file: Express.Multer.File
+  async uploadItem(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body : { name: string }
   ) {
     if( !file ) throw new BadRequestException('Make sure the file is an image');
 
     const secureUrl = `${ this.configService.get('HOST_API') }/uploads/item/${ file.filename }`
 
-    return {
+    const savedData = await this.uploadsService.save(
+      body.name,
       secureUrl
+    )
+
+    return {
+      msg: "OK",
+      data: savedData
     }
+    
   }
 
 

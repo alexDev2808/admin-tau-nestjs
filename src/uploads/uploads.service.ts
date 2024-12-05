@@ -6,6 +6,7 @@ import { existsSync } from 'fs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Item } from './entities/item.entity';
 import { Repository } from 'typeorm';
+import { PaginationDto } from 'src/common/dtos/pagination.dto';
 
 @Injectable()
 export class UploadsService {
@@ -39,6 +40,7 @@ export class UploadsService {
     }
   }
 
+  // Save post with the name and the staticUrl for item in DB
   async save( name: string, imagePath: string ) {
     try {
       const saveData = this.uploadRepository.create({
@@ -53,8 +55,15 @@ export class UploadsService {
     }
   }
 
-  findAll() {
-    return `This action returns all uploads`;
+  // Return ALL items in DataBase, includes pagination, offset
+  async findAll( paginationDto: PaginationDto ) {
+    const { limit = 10, offset = 0 } = paginationDto;
+    const items = await this.uploadRepository.find({
+      take: limit,
+      skip: offset
+    })
+
+    return items;  
   }
 
   findOne(id: number) {

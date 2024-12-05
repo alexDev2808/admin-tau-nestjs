@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseInterceptors, UploadedFile, BadRequestException, Res } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseInterceptors, UploadedFile, BadRequestException, Res, Query } from '@nestjs/common';
 import { UploadsService } from './uploads.service';
 import { CreateUploadDto } from './dto/create-upload.dto';
 import { UpdateUploadDto } from './dto/update-upload.dto';
@@ -7,6 +7,7 @@ import { imageFilter, imageNamer } from './helpers';
 import { diskStorage } from 'multer';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
+import { PaginationDto } from 'src/common/dtos/pagination.dto';
 
 @Controller('uploads')
 export class UploadsController {
@@ -14,16 +15,6 @@ export class UploadsController {
     private readonly configService: ConfigService,
     private readonly uploadsService: UploadsService
   ) {}
-
-  @Get('item/:imageName')
-  findOneImage(
-    @Res() resp: Response,
-    @Param('imageName') imageName: string
-  ) {
-    const path = this.uploadsService.getStaticProductImage( imageName );
-
-    resp.sendFile( path )
-  }
 
   @Post('item')
   @UseInterceptors( FileInterceptor('file', {
@@ -53,20 +44,19 @@ export class UploadsController {
     
   }
 
-
-  @Post()
-  create(@Body() createUploadDto: CreateUploadDto) {
-    return this.uploadsService.create(createUploadDto);
+  @Get('items')
+  findAll( @Query() paginationDto: PaginationDto) {
+    return this.uploadsService.findAll( paginationDto );
   }
 
-  @Get()
-  findAll() {
-    return this.uploadsService.findAll();
-  }
+  @Get('item/:imageName')
+  findOneImage(
+    @Res() resp: Response,
+    @Param('imageName') imageName: string
+  ) {
+    const path = this.uploadsService.getStaticProductImage( imageName );
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.uploadsService.findOne(+id);
+    resp.sendFile( path )
   }
 
   @Patch(':id')

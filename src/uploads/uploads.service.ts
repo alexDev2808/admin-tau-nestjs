@@ -9,13 +9,16 @@ import { Item } from './entities/item.entity';
 import { Repository } from 'typeorm';
 import { PaginationDto } from 'src/common/dtos/pagination.dto';
 import { isUUID } from 'class-validator';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class UploadsService {
 
   constructor(
     @InjectRepository(Item)
-    private readonly uploadRepository: Repository<Item>
+    private readonly uploadRepository: Repository<Item>,
+    private readonly configService: ConfigService,
+
   ) {}
 
   getStaticProductImage( imageName: string ) {
@@ -26,32 +29,24 @@ export class UploadsService {
     return path;
   }
 
-  async create(createUploadDto: CreateUploadDto) {
-    try {
-      const { name, staticUrl } = createUploadDto;
-      const upload = this.uploadRepository.create({
-        name,
-        staticUrl
-      })
-
-      await this.uploadRepository.save( upload )
-      return upload
-      
-    } catch (error) {
-      this.handleDBErrors(error)
-    }
-  }
 
   // Save post with the name and the staticUrl for item in DB
-  async save( name: string, imageName: string, imagePath: string ) {
+  async save( createUploadDto: CreateUploadDto, file: Express.Multer.File ) {
+
+    if( !file) throw new BadRequestException('Make sure the file is an image');
+
+    const { name } = createUploadDto
+    const staticUrl = `${ this.configService.get('HOST_API') }/uploads/item/${ file.filename }`
+
     try {
       const saveData = this.uploadRepository.create({
         name,
-        imageName,
-        staticUrl: imagePath
+        imageName: file.filename,
+        staticUrl
       })
 
-      return await this.uploadRepository.save( saveData )
+      await this.uploadRepository.save( saveData )
+      return { ...saveData }
       
     } catch (error) {
       this.handleDBErrors(error)

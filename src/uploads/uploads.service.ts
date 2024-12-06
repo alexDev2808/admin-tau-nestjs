@@ -81,26 +81,31 @@ export class UploadsService {
     await queryRunner.startTransaction()
 
     if( file ) {
-      const { ...toUpdate } = updateUploadDto;
-      const item = await this.uploadRepository.preload({ id, ...toUpdate })
-      if( !item ) throw new NotFoundException(`Product with ID: ${id} not found`);
       
       this.removeImage(id)
+
       const staticUrl = `${ this.configService.get('HOST_API') }/uploads/item/${ file.filename }`
-      const { name } = updateUploadDto
+      const { ...toUpdate } = updateUploadDto
+      const updateData = { ...toUpdate, imageName: file.filename, staticUrl }
+      const item = await this.uploadRepository.preload({ id, ...updateData })
+      if( !item ) throw new NotFoundException(`Product with ID: ${id} not found`);
 
-      const saveData = this.uploadRepository.create({
-        name,
-        imageName: file.filename,
-        staticUrl
-      })
-
-      await this.uploadRepository.save( saveData )
-      return { ...saveData }
+      await queryRunner.manager.save( item );
+      await queryRunner.commitTransaction();
+      await queryRunner.release()
+      
+      return item
     }
 
+    const { ...toUpdate } = updateUploadDto
+    const item = await this.uploadRepository.preload({ id, ...toUpdate })
+    if( !item ) throw new NotFoundException(`Product with ID: ${id} not found`);
 
-    
+    await queryRunner.manager.save( item )
+    await queryRunner.commitTransaction()
+    await queryRunner.release()
+
+    return item
   }
 
   async remove(id: string) {

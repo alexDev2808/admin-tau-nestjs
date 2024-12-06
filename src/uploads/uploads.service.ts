@@ -6,7 +6,7 @@ import { existsSync } from 'fs';
 import { promises as fs } from 'fs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Item } from './entities/item.entity';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { PaginationDto } from 'src/common/dtos/pagination.dto';
 import { isUUID } from 'class-validator';
 import { ConfigService } from '@nestjs/config';
@@ -18,7 +18,7 @@ export class UploadsService {
     @InjectRepository(Item)
     private readonly uploadRepository: Repository<Item>,
     private readonly configService: ConfigService,
-
+    private readonly dataSource: DataSource
   ) {}
 
   getStaticProductImage( imageName: string ) {
@@ -74,18 +74,56 @@ export class UploadsService {
     return item;
   }
 
-  update(id: number, updateUploadDto: UpdateUploadDto) {
-    return `This action updates a #${id} upload`;
+  async update(id: string, updateUploadDto: UpdateUploadDto, file: Express.Multer.File ) {
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect()
+    await queryRunner.startTransaction()
+
+    if( file ) {
+      const { ...toUpdate } = updateUploadDto;
+      const item = await this.uploadRepository.preload({ id, ...toUpdate })
+      if( !item ) throw new NotFoundException(`Product with ID: ${id} not found`);
+      
+      this.removeImage(id)
+      const staticUrl = `${ this.configService.get('HOST_API') }/uploads/item/${ file.filename }`
+      const { name } = updateUploadDto
+
+      const saveData = this.uploadRepository.create({
+        name,
+        imageName: file.filename,
+        staticUrl
+      })
+
+      await this.uploadRepository.save( saveData )
+      return { ...saveData }
+    }
+
+
+    
   }
 
   async remove(id: string) {
+    const item = await this.findOne(id);
+    if( !item ) throw new BadRequestException(`Item ID: ${id} not found!`)
+    
+    try {
+      await this.removeImage(item.id)
+      this.uploadRepository.remove(item)
+      return 'Archivo eliminado correctamente!'
+    } catch (error) {
+      this.handleDBErrors(error)
+    }
+    
+  }
+
+  private async removeImage(id: string) {
     const item = await this.findOne(id);
     if( !item ) throw new BadRequestException(`Item ID: ${id} not found!`)
     const filePath = join( __dirname, '../../static/uploads/', item.imageName )
     
     try {
       await fs.unlink(filePath);
-      this.uploadRepository.remove(item)
       return `Archivo eliminado correctamente: ${filePath}`
     } catch (error) {
       if (error.code === 'ENOENT') {
@@ -94,7 +132,6 @@ export class UploadsService {
         console.error('Error eliminando archivo:', error);
       }
     }
-    
   }
 
   private handleDBErrors(error: any): never {

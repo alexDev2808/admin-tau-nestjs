@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseInterceptors, UploadedFile, BadRequestException, Res, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseInterceptors, UploadedFile, BadRequestException, Res, Query, ParseUUIDPipe } from '@nestjs/common';
 import { UploadsService } from './uploads.service';
 import { CreateUploadDto } from './dto/create-upload.dto';
 import { UpdateUploadDto } from './dto/update-upload.dto';
@@ -50,8 +50,19 @@ export class UploadsController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUploadDto: UpdateUploadDto) {
-    return this.uploadsService.update(+id, updateUploadDto);
+  @UseInterceptors( FileInterceptor('file', {
+    fileFilter: imageFilter,
+    storage: diskStorage({
+      destination: './static/uploads',
+      filename: imageNamer
+    })
+  }))
+  update(
+    @UploadedFile() file: Express.Multer.File,
+    @Param('id', ParseUUIDPipe) id: string, 
+    @Body() updateUploadDto: UpdateUploadDto
+  ) {
+    return this.uploadsService.update( id, updateUploadDto, file );
   }
 
   @Delete(':id')

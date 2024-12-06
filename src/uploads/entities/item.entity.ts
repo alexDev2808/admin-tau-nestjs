@@ -12,6 +12,11 @@ export class Item {
     })
     name: string
 
+    @Column('text', {
+        unique: true
+    })
+    imageName: string;
+
     @Column('text')
     staticUrl: string
 

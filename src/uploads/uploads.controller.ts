@@ -34,6 +34,7 @@ export class UploadsController {
 
     const savedData = await this.uploadsService.save(
       body.name,
+      file.filename,
       secureUrl
     )
 
@@ -47,6 +48,11 @@ export class UploadsController {
   @Get('items')
   findAll( @Query() paginationDto: PaginationDto) {
     return this.uploadsService.findAll( paginationDto );
+  }
+
+  @Get('items/:term')
+  findOne(@Param('term') term: string) {
+    return this.uploadsService.findOne(term);
   }
 
   @Get('item/:imageName')
@@ -64,8 +70,8 @@ export class UploadsController {
     return this.uploadsService.update(+id, updateUploadDto);
   }
 
-  @Delete(':id')
+  @Delete('items/:id')
   remove(@Param('id') id: string) {
-    return this.uploadsService.remove(+id);
+    return this.uploadsService.remove(id);
   }
 }

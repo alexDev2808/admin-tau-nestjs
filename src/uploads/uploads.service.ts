@@ -1,12 +1,14 @@
-import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { CreateUploadDto } from './dto/create-upload.dto';
 import { UpdateUploadDto } from './dto/update-upload.dto';
 import { join } from 'path';
 import { existsSync } from 'fs';
+import { promises as fs } from 'fs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Item } from './entities/item.entity';
 import { Repository } from 'typeorm';
 import { PaginationDto } from 'src/common/dtos/pagination.dto';
+import { isUUID } from 'class-validator';
 
 @Injectable()
 export class UploadsService {
@@ -41,10 +43,11 @@ export class UploadsService {
   }
 
   // Save post with the name and the staticUrl for item in DB
-  async save( name: string, imagePath: string ) {
+  async save( name: string, imageName: string, imagePath: string ) {
     try {
       const saveData = this.uploadRepository.create({
         name,
+        imageName,
         staticUrl: imagePath
       })
 
@@ -66,16 +69,37 @@ export class UploadsService {
     return items;  
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} upload`;
+  async findOne(term: string) {
+    let item: Item;
+    if( isUUID(term) ) {
+      item = await this.uploadRepository.findOneBy({ id: term });
+    } 
+
+    if( !item ) throw new NotFoundException(`term: ${term} not found in DB`)
+    return item;
   }
 
   update(id: number, updateUploadDto: UpdateUploadDto) {
     return `This action updates a #${id} upload`;
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} upload`;
+  async remove(id: string) {
+    const item = await this.findOne(id);
+    if( !item ) throw new BadRequestException(`Item ID: ${id} not found!`)
+    const filePath = join( __dirname, '../../static/uploads/', item.imageName )
+    
+    try {
+      await fs.unlink(filePath);
+      this.uploadRepository.remove(item)
+      return `Archivo eliminado correctamente: ${filePath}`
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        console.error('Archivo no encontrado:', filePath);
+      } else {
+        console.error('Error eliminando archivo:', error);
+      }
+    }
+    
   }
 
   private handleDBErrors(error: any): never {

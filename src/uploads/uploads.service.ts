@@ -114,8 +114,7 @@ export class UploadsService {
     
     try {
       await this.removeImage(item.id)
-      this.uploadRepository.remove(item)
-      return 'Archivo eliminado correctamente!'
+      return this.uploadRepository.remove(item)
     } catch (error) {
       this.handleDBErrors(error)
     }
